@@ -161,17 +161,24 @@ function jsonError(status, message) {
 
 function extractTextFromResponse(j) {
   if (!j) return null;
-  // v1 generateContent response shape (primary)
   try {
     const tryPaths = [
       (o) => o?.candidates?.[0]?.content?.parts?.[0]?.text,
+       (o) => o?.candidates?.[0]?.content?.parts?.[0]?.text,
       (o) => o?.contents?.[0]?.parts?.[0]?.text,
       (o) => o?.text,
     ];
-    for (const p of tryPaths) {
-      const v = p(j);
-      if (v && typeof v === "string" && v.trim()) return v.trim();
+     for (const path of tryPaths) {
+       try {
+         const value = path(j);
+         if (value && typeof value === "string" && value.trim()) {
+           return value.trim();
+         }
+       } catch (e) {}
     }
+     // If all else fails, log the structure for debugging
+     const keys = Object.keys(j).slice(0, 5).join(", ");
+     console.log("Could not extract text. JSON keys:", keys);
   } catch (e) {
     console.error("extractTextFromResponse error:", e);
   }
