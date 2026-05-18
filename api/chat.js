@@ -91,6 +91,7 @@ export default async function handler(req) {
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let chunkLog = [];
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -98,6 +99,7 @@ export default async function handler(req) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
+            if (chunkLog.length > 0) console.log("Chunks received:", chunkLog.length, chunkLog[0]);
             controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
             controller.close();
             break;
@@ -113,6 +115,7 @@ export default async function handler(req) {
 
             try {
               const chunk = JSON.parse(line);
+              if (chunkLog.length < 3) chunkLog.push(JSON.stringify(chunk).slice(0, 200));
               const text = extractTextFromResponse(chunk);
               if (text) {
                 controller.enqueue(encoder.encode("data: " + JSON.stringify({ text }) + "\n\n"));
