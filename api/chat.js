@@ -58,15 +58,20 @@ export default async function handler(req) {
   if (!userMessage) return jsonError(400, "Missing 'message' field.");
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
-  // Simple v1 API call — just the user message
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Gemini API with proper header-based auth (per official docs)
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
   let upstream;
   try {
     upstream = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n\n" + userMessage }] }],
+        contents: [{ 
+          parts: [{ text: SYSTEM_PROMPT + "\n\nUser: " + userMessage }] 
+        }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
       }),
     });
