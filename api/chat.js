@@ -59,7 +59,7 @@ export default async function handler(req) {
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
   // Real streaming with Gemini API streamGenerateContent
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
   let upstream;
   try {
     upstream = await fetch(url, {
@@ -86,51 +86,41 @@ export default async function handler(req) {
     return jsonError(502, "API error " + upstream.status);
   }
 
-  // Stream Gemini chunks as SSE events
+    // Get full response, then stream it in chunks for real-time appearance
+    const j = await upstream.json().catch(() => null);
+    const generatedText = extractTextFromResponse(j);
+  
+    if (!generatedText) {
+      console.error("Could not extract text:", JSON.stringify(j).slice(0, 200));
+      return jsonError(502, "No text in response");
+    }
+
+    // Split text into smart chunks (sentences/words) for streaming effect
   const encoder = new TextEncoder();
-  const reader = upstream.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let chunkLog = [];
 
   const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            if (chunkLog.length > 0) console.log("Chunks received:", chunkLog.length, chunkLog[0]);
+      start(controller) {
+        // Split into words for streaming effect
+        const words = generatedText.split(/(\s+)/);
+        let sent = 0;
+      
+        const sendNext = () => {
+          if (sent >= words.length) {
             controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
             controller.close();
-            break;
+            return;
           }
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines[lines.length - 1]; // Keep incomplete line in buffer
-
-          for (let i = 0; i < lines.length - 1; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-
-            try {
-              const chunk = JSON.parse(line);
-              if (chunkLog.length < 3) chunkLog.push(JSON.stringify(chunk).slice(0, 200));
-              const text = extractTextFromResponse(chunk);
-              if (text) {
-                controller.enqueue(encoder.encode("data: " + JSON.stringify({ text }) + "\n\n"));
-              }
-            } catch (e) {
-              // Skip invalid JSON lines
-            }
+        
+          // Send word(s) with 20ms delay for smooth streaming
+          if (words[sent]) {
+            controller.enqueue(encoder.encode("data: " + JSON.stringify({ text: words[sent] }) + "\n\n"));
           }
-        }
-      } catch (e) {
-        console.error("Stream error:", e);
-        controller.enqueue(encoder.encode("data: " + JSON.stringify({ error: "Stream failed" }) + "\n\n"));
-        controller.close();
-      }
-    },
+          sent++;
+          setTimeout(sendNext, 20);
+        };
+      
+        sendNext();
+      },
   });
 
   return new Response(stream, {
