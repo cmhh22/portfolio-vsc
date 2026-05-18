@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="cmhhBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0066c8"></stop>
+      <stop offset="55%" stop-color="#5b8def"></stop>
+      <stop offset="100%" stop-color="#a371f7"></stop>
+    </linearGradient>
+    <radialGradient id="cmhhGlow" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.35"></stop>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"></stop>
+    </radialGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#cmhhBg)"></rect>
+  <rect width="120" height="120" rx="28" fill="url(#cmhhGlow)"></rect>
+  
+  <g stroke="#fff" stroke-opacity="0.18" stroke-width="0.6" fill="none">
+    <line x1="14" y1="22" x2="38" y2="44"></line>
+    <line x1="38" y1="44" x2="22" y2="84"></line>
+    <line x1="38" y1="44" x2="78" y2="40"></line>
+    <line x1="78" y1="40" x2="104" y2="68"></line>
+    <line x1="78" y1="40" x2="92" y2="98"></line>
+    <line x1="22" y1="84" x2="60" y2="106"></line>
+    <line x1="60" y1="106" x2="92" y2="98"></line>
+  </g>
+  <g fill="#fff" fill-opacity="0.5">
+    <circle cx="14" cy="22" r="1.6"></circle>
+    <circle cx="38" cy="44" r="1.6"></circle>
+    <circle cx="22" cy="84" r="1.6"></circle>
+    <circle cx="78" cy="40" r="1.6"></circle>
+    <circle cx="104" cy="68" r="1.6"></circle>
+    <circle cx="60" cy="106" r="1.6"></circle>
+    <circle cx="92" cy="98" r="1.6"></circle>
+  </g>
+  
+  <text x="60" y="74" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, ui-monospace, monospace" font-size="32" font-weight="700" fill="#fff" letter-spacing="-1.5" style="paint-order: stroke; stroke: rgba(0,0,0,0.18); stroke-width: 0.6">CMHH</text>
+</svg>

@@ -1515,23 +1515,6 @@ function CopilotPanel({ onClose }) {
             }
           }
         }
-
-        // Flush any final event fragment that arrived without a trailing blank line.
-        if (buffer.trim()) {
-          const dataLines = buffer
-            .split("\n")
-            .filter(l => l.startsWith("data: "))
-            .map(l => l.slice(6));
-          for (const dl of dataLines) {
-            if (!dl) continue;
-            try {
-              const obj = JSON.parse(dl);
-              if (obj.error) throw new Error(obj.error);
-              if (obj.text) appendChunk(obj.text);
-            } catch (e) { /* ignore parse errors */ }
-          }
-        }
-
         finalize();
       } else {
         // -- Preview path: window.claude.complete (non-streaming).
@@ -1968,7 +1951,6 @@ function DinoGameView({ tokensMax = 3, target = 200, onWin, onSkip }) {
           }
         }
         // non-linear difficulty: gentle warm-up, then accelerates
-        // speed grows ~sqrt(t), capped so it stays playable
         const targetSpeed = Math.min(6.5 * dpr, 1.6 * dpr + Math.sqrt(g.t) * 0.16 * dpr);
         g.speed += (targetSpeed - g.speed) * 0.02;
       }
