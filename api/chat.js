@@ -1,5 +1,5 @@
-ï»¿/* Vercel serverless â€” streams Copilot from Gemini */
-const SYSTEM_PROMPT = `You are CMHH's Copilot â€” friendly AI for Carlos Manuel HernÃ¡ndez's portfolio. Answer only about Carlos. Be professional, max 3 paragraphs. Spanish or English.`;
+/* Vercel serverless — streams Copilot from Gemini */
+const SYSTEM_PROMPT = `You are CMHH's Copilot — friendly AI for Carlos Manuel Hernández's portfolio. Answer only about Carlos. Be professional, max 3 paragraphs. Spanish or English.`;
 
 export const config = { runtime: "edge" };
 
@@ -14,7 +14,7 @@ export default async function handler(req) {
   if (!msg) return jsonError(400, "Missing message");
   
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
