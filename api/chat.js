@@ -58,7 +58,8 @@ export default async function handler(req) {
   if (!userMessage) return jsonError(400, "Missing 'message' field.");
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+  // Use v1 generateContent (stable, widely available) with system prompt in contents
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   let upstream;
   try {
     upstream = await fetch(url, {
@@ -66,58 +67,38 @@ export default async function handler(req) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        contents: [
+          { role: "user", parts: [{ text: userMessage }] }
+        ],
         generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
       }),
     });
   } catch (e) {
+    console.error("Upstream fetch error:", e);
     return jsonError(502, "Upstream fetch failed: " + String(e));
   }
-  if (!upstream.ok || !upstream.body) {
+
+  if (!upstream.ok) {
     const errText = await upstream.text().catch(() => "");
-    return jsonError(502, "Upstream error " + upstream.status + ": " + errText);
+    console.error("Upstream error:", upstream.status, errText.slice(0, 300));
+    return jsonError(502, "API error " + upstream.status);
   }
 
-  // Pipe Gemini's SSE stream through, re-emitting clean JSON events.
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
+  const j = await upstream.json().catch(() => null);
+  const generatedText = extractTextFromResponse(j);
+  
+  if (!generatedText) {
+    console.error("Could not extract text from response:", JSON.stringify(j).slice(0, 300));
+    return jsonError(502, "No text in response");
+  }
 
+  // Convert response to SSE format (simulate streaming for consistency with client)
+  const encoder = new TextEncoder();
   const stream = new ReadableStream({
-    async start(controller) {
-      const reader = upstream.body.getReader();
-      let buffer = "";
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          // SSE events end on a blank line. Split on \n\n.
-          let idx;
-          while ((idx = buffer.indexOf("\n\n")) !== -1) {
-            const rawEvent = buffer.slice(0, idx);
-            buffer = buffer.slice(idx + 2);
-            const dataLines = rawEvent
-              .split("\n")
-              .filter(l => l.startsWith("data: "))
-              .map(l => l.slice(6));
-            for (const dl of dataLines) {
-              if (!dl || dl === "[DONE]") continue;
-              try {
-                const obj = JSON.parse(dl);
-                const text = obj?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                  controller.enqueue(encoder.encode("data: " + JSON.stringify({ text }) + "\n\n"));
-                }
-              } catch (_) { /* ignore malformed lines */ }
-            }
-          }
-        }
-        controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
-      } catch (e) {
-        controller.enqueue(encoder.encode("data: " + JSON.stringify({ error: String(e) }) + "\n\n"));
-      } finally {
-        controller.close();
-      }
+    start(controller) {
+      controller.enqueue(encoder.encode("data: " + JSON.stringify({ text: generatedText }) + "\n\n"));
+      controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
+      controller.close();
     },
   });
 
@@ -145,4 +126,23 @@ function jsonError(status, message) {
     status,
     headers: { ...corsHeaders(), "Content-Type": "application/json" },
   });
+}
+
+function extractTextFromResponse(j) {
+  if (!j) return null;
+  // v1 generateContent response shape (primary)
+  try {
+    const tryPaths = [
+      (o) => o?.candidates?.[0]?.content?.parts?.[0]?.text,
+      (o) => o?.contents?.[0]?.parts?.[0]?.text,
+      (o) => o?.text,
+    ];
+    for (const p of tryPaths) {
+      const v = p(j);
+      if (v && typeof v === "string" && v.trim()) return v.trim();
+    }
+  } catch (e) {
+    console.error("extractTextFromResponse error:", e);
+  }
+  return null;
 }
