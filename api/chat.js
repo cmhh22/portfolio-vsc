@@ -16,7 +16,7 @@ export default async function handler(req) {
   try {
     const requestBody = {
       contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n\nUser: " + msg }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
     };
 
     const modelUrls = [

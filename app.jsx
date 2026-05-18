@@ -1515,6 +1515,23 @@ function CopilotPanel({ onClose }) {
             }
           }
         }
+
+        // Flush any final event fragment that arrived without a trailing blank line.
+        if (buffer.trim()) {
+          const dataLines = buffer
+            .split("\n")
+            .filter(l => l.startsWith("data: "))
+            .map(l => l.slice(6));
+          for (const dl of dataLines) {
+            if (!dl) continue;
+            try {
+              const obj = JSON.parse(dl);
+              if (obj.error) throw new Error(obj.error);
+              if (obj.text) appendChunk(obj.text);
+            } catch (e) { /* ignore parse errors */ }
+          }
+        }
+
         finalize();
       } else {
         // -- Preview path: window.claude.complete (non-streaming).
