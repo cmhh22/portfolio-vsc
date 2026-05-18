@@ -59,15 +59,15 @@ export default async function handler(req) {
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
   // Use v1 generateContent (stable, widely available) with system prompt in contents
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   let upstream;
   try {
     upstream = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [
+        
+        contents: [{ role: 'user', parts: [{ text: SYSTEM_PROMPT }] }, 
           { role: "user", parts: [{ text: userMessage }] }
         ],
         generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
@@ -146,4 +146,6 @@ function extractTextFromResponse(j) {
   }
   return null;
 }
+
+
 
