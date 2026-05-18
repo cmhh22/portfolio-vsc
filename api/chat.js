@@ -1,5 +1,5 @@
-/* Vercel serverless — streams Copilot from Gemini */
-const SYSTEM_PROMPT = `You are CMHH's Copilot — friendly AI for Carlos Manuel Hernández's portfolio. Answer only about Carlos. Be professional, max 3 paragraphs. Spanish or English.`;
+/* Vercel serverless ï¿½ streams Copilot from Gemini */
+const SYSTEM_PROMPT = `You are CMHH's Copilot ï¿½ friendly AI for Carlos Manuel Hernï¿½ndez's portfolio. Answer only about Carlos. Be professional, max 3 paragraphs. Spanish or English.`;
 
 export const config = { runtime: "edge" };
 
@@ -14,21 +14,40 @@ export default async function handler(req) {
   if (!msg) return jsonError(400, "Missing message");
   
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n\nUser: " + msg }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-      }),
-    });
-    
-    if (!res.ok) {
-      const e = await res.text().catch(() => "");
-      console.error("API:", res.status, e.slice(0, 100));
-      return jsonError(502, "API " + res.status);
+    const requestBody = {
+      contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n\nUser: " + msg }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+    };
+
+    const modelUrls = [
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+    ];
+
+    let res = null;
+    let lastStatus = 502;
+    let lastErrorText = "";
+
+    for (const modelUrl of modelUrls) {
+      res = await fetch(modelUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (res.ok) break;
+
+      lastStatus = res.status;
+      lastErrorText = await res.text().catch(() => "");
+      console.error("API:", res.status, lastErrorText.slice(0, 120), modelUrl);
+      if (res.status !== 429 && res.status !== 404) break;
     }
-    
+
+    if (!res || !res.ok) {
+      return jsonError(502, "API " + lastStatus);
+    }
+
     const j = await res.json();
     const text = j?.candidates?.[0]?.content?.parts?.[0]?.text || j?.text;
     if (!text) return jsonError(502, "No response");
