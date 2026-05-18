@@ -59,7 +59,7 @@ export default async function handler(req) {
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
   // Use v1 generateContent (stable, widely available) with system prompt in contents
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   let upstream;
   try {
     upstream = await fetch(url, {
@@ -146,3 +146,4 @@ function extractTextFromResponse(j) {
   }
   return null;
 }
+
