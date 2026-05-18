@@ -58,8 +58,8 @@ export default async function handler(req) {
   if (!userMessage) return jsonError(400, "Missing 'message' field.");
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
-  // Gemini API with proper header-based auth (per official docs)
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+  // Real streaming with Gemini API streamGenerateContent
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent`;
   let upstream;
   try {
     upstream = await fetch(url, {
@@ -86,21 +86,47 @@ export default async function handler(req) {
     return jsonError(502, "API error " + upstream.status);
   }
 
-  const j = await upstream.json().catch(() => null);
-  const generatedText = extractTextFromResponse(j);
-  
-  if (!generatedText) {
-    console.error("Could not extract text from response:", JSON.stringify(j).slice(0, 300));
-    return jsonError(502, "No text in response");
-  }
-
-  // Convert response to SSE format (simulate streaming for consistency with client)
+  // Stream Gemini chunks as SSE events
   const encoder = new TextEncoder();
+  const reader = upstream.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
   const stream = new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode("data: " + JSON.stringify({ text: generatedText }) + "\n\n"));
-      controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
-      controller.close();
+    async start(controller) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
+            controller.close();
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines[lines.length - 1]; // Keep incomplete line in buffer
+
+          for (let i = 0; i < lines.length - 1; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            try {
+              const chunk = JSON.parse(line);
+              const text = extractTextFromResponse(chunk);
+              if (text) {
+                controller.enqueue(encoder.encode("data: " + JSON.stringify({ text }) + "\n\n"));
+              }
+            } catch (e) {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Stream error:", e);
+        controller.enqueue(encoder.encode("data: " + JSON.stringify({ error: "Stream failed" }) + "\n\n"));
+        controller.close();
+      }
     },
   });
 
