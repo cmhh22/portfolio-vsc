@@ -1,5 +1,5 @@
 /* Vercel serverless function — streams Copilot chat from Google Gemini.
-    Free tier: gemini-2.5-flash · 10 req/min · 250 req/day · no card needed.
+    Free tier: gemini-2.5-flash-lite · 15 req/min · 1,500 req/day · no card needed.
 
    Required env var (set in Vercel dashboard):
      GEMINI_API_KEY  — get one at https://aistudio.google.com/apikey
@@ -58,7 +58,7 @@ export default async function handler(req) {
   if (!userMessage) return jsonError(400, "Missing 'message' field.");
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
   let upstream;
   try {
     upstream = await fetch(url, {
@@ -67,7 +67,7 @@ export default async function handler(req) {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: "user", parts: [{ text: userMessage }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
       }),
     });
   } catch (e) {
@@ -104,7 +104,11 @@ export default async function handler(req) {
               if (!dl || dl === "[DONE]") continue;
               try {
                 const obj = JSON.parse(dl);
-                const text = obj?.candidates?.[0]?.content?.parts?.[0]?.text;
+                const parts = obj?.candidates?.[0]?.content?.parts ?? [];
+                const text = parts
+                  .filter(p => !p.thought)
+                  .map(p => p.text ?? "")
+                  .join("");
                 if (text) {
                   controller.enqueue(encoder.encode("data: " + JSON.stringify({ text }) + "\n\n"));
                 }
