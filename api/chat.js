@@ -1,5 +1,5 @@
 /* Vercel serverless function — streams Copilot chat from Google Gemini.
-   Free tier: gemini-1.5-flash · 15 req/min · 1,500 req/day · no card needed.
+    Free tier: gemini-2.5-flash · 10 req/min · 250 req/day · no card needed.
 
    Required env var (set in Vercel dashboard):
      GEMINI_API_KEY  — get one at https://aistudio.google.com/apikey
@@ -58,7 +58,7 @@ export default async function handler(req) {
   if (!userMessage) return jsonError(400, "Missing 'message' field.");
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
   let upstream;
   try {
     upstream = await fetch(url, {
