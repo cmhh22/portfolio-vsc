@@ -86,19 +86,11 @@ export default async function handler(req) {
     async start(controller) {
       const reader = upstream.body.getReader();
       let buffer = "";
-      // TEMP DEBUG — remove after diagnosis
-      const _firstRead = await reader.read();
-      if (!_firstRead.done && _firstRead.value) {
-        const _raw = decoder.decode(_firstRead.value, { stream: true });
-        controller.enqueue(encoder.encode("data: " + JSON.stringify({ _debug: _raw.slice(0, 800) }) + "\n\n"));
-        buffer += _raw;
-      }
-      // END TEMP DEBUG
       try {
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          buffer += decoder.decode(value, { stream: true });
+          buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
           // SSE events end on a blank line. Split on \n\n.
           let idx;
           while ((idx = buffer.indexOf("\n\n")) !== -1) {
