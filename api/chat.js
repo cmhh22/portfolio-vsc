@@ -104,6 +104,8 @@ export default async function handler(req) {
               if (!dl || dl === "[DONE]") continue;
               try {
                 const obj = JSON.parse(dl);
+                // TEMP DEBUG — remove after diagnosis
+                console.error("GEMINI_CHUNK:", JSON.stringify(obj?.candidates?.[0]?.content));
                 const parts = obj?.candidates?.[0]?.content?.parts ?? [];
                 const text = parts
                   .filter(p => !p.thought)
