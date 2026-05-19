@@ -1,8 +1,9 @@
-/* Vercel serverless function — streams Copilot chat from Google Gemini.
-    Free tier: gemini-2.5-flash-lite · 15 req/min · 1,500 req/day · no card needed.
+/* Vercel Edge function — streams Copilot chat from OpenRouter.
+   Free tier via openrouter/free router (auto-selects available free model).
+   Docs: https://openrouter.ai/docs
 
    Required env var (set in Vercel dashboard):
-     GEMINI_API_KEY  — get one at https://aistudio.google.com/apikey
+     OPENROUTER_API_KEY  — get one at https://openrouter.ai/keys
 
    Returns Server-Sent Events (SSE). Each event is a JSON line: {"text": "..."}.
    Final line is {"done": true}. On error: {"error": "..."}.
@@ -35,22 +36,18 @@ Rules:
 - Reply in the same language the user uses (Spanish or English).
 - Be enthusiastic but professional. Plain text only, no markdown headers. Max 3 short paragraphs.`;
 
-// Use Edge runtime for true streaming
 export const config = { runtime: "edge" };
 
 export default async function handler(req) {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders(),
-    });
+    return new Response(null, { status: 200, headers: corsHeaders() });
   }
   if (req.method !== "POST") {
     return jsonError(405, "Method not allowed");
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return jsonError(500, "GEMINI_API_KEY not set on the server.");
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return jsonError(500, "OPENROUTER_API_KEY not set on the server.");
 
   let body;
   try { body = await req.json(); } catch { body = {}; }
@@ -58,16 +55,25 @@ export default async function handler(req) {
   if (!userMessage) return jsonError(400, "Missing 'message' field.");
   if (userMessage.length > 1000) return jsonError(400, "Message too long (max 1000 chars).");
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
   let upstream;
   try {
-    upstream = await fetch(url, {
+    upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey,
+        "HTTP-Referer": "https://portfolio-vsc-five.vercel.app",
+        "X-Title": "CMHH Portfolio Copilot",
+      },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+        model: "openrouter/free",
+        stream: true,
+        max_tokens: 1024,
+        temperature: 0.7,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userMessage },
+        ],
       }),
     });
   } catch (e) {
@@ -78,7 +84,6 @@ export default async function handler(req) {
     return jsonError(502, "Upstream error " + upstream.status + ": " + errText);
   }
 
-  // Pipe Gemini's SSE stream through, re-emitting clean JSON events.
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -91,7 +96,6 @@ export default async function handler(req) {
           const { value, done } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
-          // SSE events end on a blank line. Split on \n\n.
           let idx;
           while ((idx = buffer.indexOf("\n\n")) !== -1) {
             const rawEvent = buffer.slice(0, idx);
@@ -102,15 +106,11 @@ export default async function handler(req) {
               .map(l => l.slice(6));
             for (const dl of dataLines) {
               if (!dl || dl === "[DONE]") continue;
+              // OpenRouter occasionally emits SSE "comment" lines starting with ":" — skip.
+              if (dl.startsWith(":")) continue;
               try {
                 const obj = JSON.parse(dl);
-                // TEMP DEBUG — remove after diagnosis
-                console.error("GEMINI_CHUNK:", JSON.stringify(obj?.candidates?.[0]?.content));
-                const parts = obj?.candidates?.[0]?.content?.parts ?? [];
-                const text = parts
-                  .filter(p => !p.thought)
-                  .map(p => p.text ?? "")
-                  .join("");
+                const text = obj?.choices?.[0]?.delta?.content;
                 if (text) {
                   controller.enqueue(encoder.encode("data: " + JSON.stringify({ text }) + "\n\n"));
                 }
