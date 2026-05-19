@@ -104,4 +104,7 @@ All colors are CSS variables — never hardcoded. Active theme set by a `data-th
 
 ## 📄 License
 
-MIT — feel free to fork and personalize.
+MIT — [fork it and make it yours](https://github.com/cmhh22/portfolio-vsc/fork).
+
+> If you use this template, a ⭐ on the repo is appreciated.  
+> Remember to replace the content in `sections.jsx` and `api/chat.js` with your own info before deploying.
