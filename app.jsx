@@ -22,6 +22,10 @@ const FILES = [
   { id: "resume.pdf",     label: "Carlos_Manuel_CV.pdf", icon: "pdf", group: "root", external: true },
 ];
 
+const isMobileVP = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(max-width: 768px)").matches;
+
 /* -------- File icons -------- */
 function FileIcon({ kind, size = 14 }) {
   const s = size;
@@ -185,11 +189,12 @@ const QUOTES = [
 function App() {
   const [activeFile, setActiveFile] = useState("home.py");
   const [openTabs, setOpenTabs] = useState(["home.py", "about.md", "projects.ipynb", "skills.json"]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(isMobileVP);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobileVP());
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const [activityBarVisible, setActivityBarVisible] = useState(true);
   const [copilotOpen, setCopilotOpen] = useState(false);
-  const [terminalOpen, setTerminalOpen] = useState(true);
+  const [terminalOpen, setTerminalOpen] = useState(() => !isMobileVP());
   const [terminalTab, setTerminalTab] = useState("terminal");
   const [terminalHeight, setTerminalHeight] = useState(220);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -207,6 +212,17 @@ function App() {
   useEffect(() => {
     document.documentElement.style.setProperty("--sidebar-w", sidebarWidth + "px");
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const onChange = (e) => setIsMobile(e.matches);
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener(onChange);
+    };
+  }, []);
 
   useEffect(() => {
     window.__openFile = (id) => openFile(id);
@@ -252,7 +268,16 @@ function App() {
     setPaletteOpen(false);
     setSettingsOpen(false);
     setMenuOpen(null);
+    if (isMobileVP()) {
+      setSidebarOpen(false);
+      setCopilotOpen(false);
+    }
   }, []);
+
+  const handleCopilotToggle = () => {
+    setCopilotOpen(c => !c);
+    if (isMobileVP()) setSidebarOpen(false);
+  };
 
   const closeTab = (id, e) => {
     e?.stopPropagation();
@@ -271,7 +296,7 @@ function App() {
       else if (mod && e.key.toLowerCase() === "p") { e.preventDefault(); setPaletteOpen(true); }
       else if (mod && e.key.toLowerCase() === "b") { e.preventDefault(); setSidebarOpen(s => !s); }
       else if (mod && e.key.toLowerCase() === "j") { e.preventDefault(); setTerminalOpen(t => !t); }
-      else if (mod && e.key.toLowerCase() === "i") { e.preventDefault(); setCopilotOpen(c => !c); }
+      else if (mod && e.key.toLowerCase() === "i") { e.preventDefault(); handleCopilotToggle(); }
       else if (mod && e.key.toLowerCase() === ",") { e.preventDefault(); setSettingsOpen(s => !s); }
       else if (e.key === "F11") { e.preventDefault(); window.__toggleFullscreen?.(); }
       else if (e.key === "Escape") { setPaletteOpen(false); setSettingsOpen(false); setMenuOpen(null); }
@@ -330,7 +355,7 @@ function App() {
         openFile={openFile}
         toggleSidebar={() => setSidebarOpen(s => !s)}
         toggleTerminal={() => setTerminalOpen(t => !t)}
-        toggleCopilot={() => setCopilotOpen(c => !c)}
+        toggleCopilot={handleCopilotToggle}
         openPalette={() => setPaletteOpen(true)}
         openSettings={() => setSettingsOpen(true)}
         openTabs={openTabs}
@@ -340,12 +365,23 @@ function App() {
       />
 
       <div className="body" data-sidebar={sidebarOpen} data-copilot={copilotOpen} data-activity={activityBarVisible}>
+        {isMobile && sidebarOpen && (
+          <div className="mobile-backdrop" onClick={() => setSidebarOpen(false)} />
+        )}
         {activityBarVisible && (
           <ActivityBar
             activity={activityTab}
-            setActivity={(k) => { setActivityTab(k); setSidebarOpen(true); }}
+            setActivity={(k) => {
+              if (isMobile && activityTab === k && sidebarOpen) {
+                setSidebarOpen(false);
+              } else {
+                setActivityTab(k);
+                setSidebarOpen(true);
+                if (isMobile) setCopilotOpen(false);
+              }
+            }}
             onSettings={() => setSettingsOpen(true)}
-            onCopilot={() => setCopilotOpen(c => !c)}
+            onCopilot={handleCopilotToggle}
             copilotOpen={copilotOpen}
             onHide={() => setActivityBarVisible(false)}
           />
@@ -362,7 +398,7 @@ function App() {
           <Sidebar
             activeFile={activeFile}
             openFile={openFile}
-            onCopilot={() => setCopilotOpen(c => !c)}
+            onCopilot={handleCopilotToggle}
             activityTab={activityTab}
             collapsedGroups={collapsedGroups}
             toggleGroup={toggleGroup}
@@ -409,7 +445,7 @@ function App() {
           openFile={openFile}
           toggleTerminal={() => setTerminalOpen(t => !t)}
           toggleSidebar={() => setSidebarOpen(s => !s)}
-          toggleCopilot={() => setCopilotOpen(c => !c)}
+          toggleCopilot={handleCopilotToggle}
           setTheme={setTheme}
         />
       )}

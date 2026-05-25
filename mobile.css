@@ -1,0 +1,376 @@
+/* ==========================================================
+   Mobile + touch overrides — cmhh22 portfolio
+   Loaded AFTER styles.css so overrides win.
+
+   Strategy:
+   - Touch / coarse pointer  → disable custom cursor halo
+   - ≤ 900px  → tablet-style: collapse extras, smaller paddings
+   - ≤ 768px  → mobile: bottom activity bar, slide-in sidebar,
+                full-screen copilot, bottom-sheet terminal
+   - ≤ 420px  → tighten hero / titlebar / page paddings further
+   ========================================================== */
+
+/* ---------- touch / coarse-pointer: restore native cursor ---------- */
+@media (hover: none), (pointer: coarse) {
+  html, body, * { cursor: auto !important; }
+  a, button, .btn, .file-row, .tab, .tt, .menu-item, .menu-row,
+  .cmdp-row, .copilot-quick .q, .ab-btn, .sb-item, .copilot-launcher,
+  .chip, .traffic .dot, .tb-icon-btn, .icon-btn, .ext-row, .git-row,
+  .activity-restore { cursor: pointer !important; }
+  input, textarea, .term-input { cursor: text !important; }
+
+  .mouse-trail, .mouse-dot { display: none !important; }
+
+  /* slightly bigger tap targets everywhere */
+  .file-row, .git-row, .cmdp-row, .menu-row,
+  .copilot-quick .q { min-height: 36px; }
+  .ab-btn { min-height: 40px; min-width: 40px; }
+}
+
+/* ============================================================
+   TABLET breakpoint ≤ 900px — light touch
+   ============================================================ */
+@media (max-width: 900px) {
+  .titlebar-center { min-width: 0; }
+  .titlebar-center .kbd-hint { display: none; }
+
+  .copilot { width: min(380px, 70vw); }
+  .body[data-copilot="true"] { --copilot-w: 0px; }
+  .copilot {
+    position: fixed;
+    top: 58px; bottom: 44px; right: 0;
+    z-index: 60;
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* ============================================================
+   MOBILE breakpoint ≤ 768px
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* ----- app shell rows: drop the ticker, condense ----- */
+  .app {
+    grid-template-rows: 32px 30px 1fr 24px;
+    height: 100vh;
+    height: 100dvh; /* iOS dynamic viewport */
+  }
+  .ticker { display: none !important; }
+
+  /* ----- TITLEBAR ----- */
+  .titlebar {
+    grid-template-columns: auto 1fr auto;
+    padding: 0 8px;
+    gap: 6px;
+  }
+  .traffic { display: none; }
+  .titlebar-center {
+    min-width: 0;
+    font-size: 11px;
+    padding: 3px 10px;
+    gap: 6px;
+    width: 100%;
+  }
+  .titlebar-center .kbd-hint { display: none; }
+  .titlebar-right span:not(.live-dot) { display: none; }
+  .titlebar-right .live-dot { margin-right: 2px; }
+  .tb-icon-btn { width: 30px; height: 26px; }
+
+  /* ----- MENUBAR: compact, dropdowns can overflow ----- */
+  .menubar {
+    gap: 0;
+    padding: 0 4px;
+    overflow: visible;
+  }
+  .menubar .menu-item {
+    padding: 4px 8px;
+    font-size: 11.5px;
+    flex-shrink: 1;
+  }
+  .menu-dropdown {
+    min-width: 220px;
+    max-width: calc(100vw - 24px);
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .menu-row { min-height: 36px; }
+
+  /* ----- BODY: single column; sidebar/activity/copilot float as fixed ----- */
+  .body,
+  .body[data-sidebar="true"],
+  .body[data-sidebar="false"],
+  .body[data-copilot="true"] {
+    grid-template-columns: 1fr !important;
+    min-height: 0;
+    position: relative;
+  }
+  /* hide the inline resize handle column on mobile */
+  .body > .resize-handle { display: none !important; }
+
+  /* ----- ACTIVITY BAR → bottom nav ----- */
+  .activity {
+    flex-direction: row;
+    position: fixed;
+    bottom: 24px;            /* sits above the status bar */
+    left: 0; right: 0;
+    height: 50px;
+    padding: 4px 6px;
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    background: var(--activitybar);
+    justify-content: space-around;
+    gap: 0;
+    z-index: 70;
+    box-shadow: 0 -4px 16px -4px rgba(0,0,0,.35);
+  }
+  .activity .ab-btn {
+    flex: 1;
+    height: 42px;
+    max-width: 60px;
+    border-radius: 8px;
+  }
+  .activity .ab-btn svg { width: 22px; height: 22px; }
+  .activity .ab-btn.active::before {
+    left: 18%; right: 18%;
+    top: -4px; bottom: auto;
+    width: auto; height: 2px;
+    border-radius: 2px;
+  }
+  .activity .spacer { display: none; }
+  .activity-restore { display: none; }
+
+  /* ----- SIDEBAR → slide-in drawer ----- */
+  .sidebar {
+    position: fixed;
+    top: 62px;             /* below titlebar + menubar */
+    bottom: 74px;          /* above bottom nav + status bar */
+    left: 0;
+    width: 84vw !important;
+    max-width: 320px;
+    z-index: 75;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    box-shadow: var(--shadow-pop);
+    transform: translateX(0);
+    transition: transform .25s cubic-bezier(.22,.7,.3,1);
+  }
+  .body[data-sidebar="false"] .sidebar { display: none; }
+
+  /* sidebar backdrop (rendered as a real div from JS for tap-to-close) */
+  .mobile-backdrop {
+    position: fixed;
+    top: 62px; bottom: 74px; left: 0; right: 0;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(1px);
+    z-index: 72;
+    animation: fadeIn .18s ease;
+  }
+
+  .sidebar-header { padding: 14px 16px 10px; }
+  .file-row { padding: 8px 10px 8px 26px; font-size: 13.5px; }
+  .tree-group { padding: 8px 10px; font-size: 11.5px; }
+  .copilot-launcher { padding: 12px 14px; }
+
+  /* hide the desktop resize handle */
+  .resize-handle { display: none !important; }
+
+  /* ----- EDITOR fills full width ----- */
+  .editor {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    /* terminal is position:fixed on mobile — force last row to 0 to
+       defeat the inline style set by JS */
+    grid-template-rows: 38px auto 1fr 0px !important;
+  }
+  .editor[data-terminal="true"] { --term-h: 0px; }
+
+  /* editor content scrolls inside its grid row */
+  .editor-content {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
+    padding-bottom: 80px; /* clear the bottom nav + status bar */
+  }
+
+  .tab-bar { overflow-x: auto; }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 8px 12px;
+    font-size: 13px;
+    min-height: 40px;
+  }
+  .tab .close { width: 22px; height: 22px; font-size: 15px; }
+
+  .breadcrumbs {
+    font-size: 10.5px;
+    padding: 5px 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .breadcrumbs::-webkit-scrollbar { display: none; }
+
+  /* keep content out from under the bottom chrome (~50 nav + 24 status) */
+  .editor-content {
+    padding-bottom: 90px;
+  }
+  /* hero block has position:relative+overflow:hidden — fix it on home so
+     the inner content can grow naturally and the editor-content scrolls */
+  .editor-content .page {
+    overflow: visible !important;
+  }
+
+  /* ----- TERMINAL → bottom-sheet overlay above bottom nav ----- */
+  .terminal {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: 74px;          /* above bottom nav + status bar */
+    max-height: 55vh;
+    height: 320px;
+    z-index: 80;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 24px -8px rgba(0,0,0,.5);
+    display: grid;
+    grid-template-rows: 6px 34px 1fr;
+  }
+  .terminal-resize { pointer-events: none; }
+  .terminal-resize::after { opacity: 0.6; background: var(--fg-faint); }
+  .terminal-tabs { font-size: 11px; gap: 12px; }
+  .terminal-tabs .close-x {
+    width: 32px; height: 28px;
+    display: grid; place-items: center;
+    font-size: 18px;
+  }
+  .terminal-body { padding: 12px 14px; font-size: 12px; }
+  .term-help-row { grid-template-columns: 90px 1fr; gap: 10px; font-size: 11.5px; }
+
+  /* ----- COPILOT → full-width sheet ----- */
+  .copilot {
+    position: fixed;
+    top: 62px; bottom: 74px; right: 0; left: 0;
+    width: 100vw;
+    z-index: 78;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    box-shadow: var(--shadow-pop);
+  }
+  .copilot-body { padding: 16px 14px; }
+  .copilot-input { padding: 10px; }
+  .copilot-quick { grid-template-columns: 1fr; }
+
+  /* ----- STATUS BAR: trim non-essentials ----- */
+  .statusbar { font-size: 10px; }
+  .statusbar .sb-item { padding: 0 8px; }
+  .statusbar .sb-item:not(.accent-block):not(:nth-last-of-type(-n+3)) {
+    display: none;
+  }
+
+  /* ----- COMMAND PALETTE: bigger touch target ----- */
+  .cmdp-backdrop { padding-top: 8vh; padding-left: 12px; padding-right: 12px; }
+  .cmdp { width: 100%; max-width: 540px; }
+  .cmdp-input { padding: 10px 12px; }
+  .cmdp-row { min-height: 42px; padding: 8px 12px; font-size: 12.5px; }
+
+  /* ----- PAGE CONTENT: tighten paddings, scale type ----- */
+  .page {
+    padding: 24px 18px 40px;
+    max-width: 100%;
+  }
+  .page h1 { font-size: 36px; line-height: 1.08; }
+  .page h2 { font-size: 16px; }
+
+  .hero-greet { margin-bottom: 18px; font-size: 12px; }
+  .hero-name { font-size: clamp(36px, 11vw, 60px) !important; letter-spacing: -0.03em; }
+  .hero-sub { font-size: 13.5px; margin: 22px 0 14px; }
+  .role-chips .chip { font-size: 11px; padding: 5px 10px; }
+  .cta-row { gap: 8px; }
+  .btn { padding: 9px 14px; font-size: 12px; }
+
+  /* Home code block — keep gutter narrow, allow horizontal scroll */
+  .page > div > div[style*="grid-template-columns"] {
+    overflow-x: auto;
+  }
+
+  /* Markdown / About */
+  .md-h1 { font-size: 28px; }
+  .md-h2 { font-size: 18px; margin: 28px 0 10px; }
+  .md-p, .md-list li { font-size: 13px; }
+
+  /* Jupyter cells: stack tag above card */
+  .nb-cell {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .nb-tag {
+    text-align: left;
+    padding-top: 0;
+    font-size: 11px;
+  }
+  .nb-card { padding: 12px 14px 14px; }
+  .nb-card h3 { font-size: 15px; }
+  .nb-output {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    font-size: 11px;
+  }
+  .viz { height: 60px; }
+
+  /* Skills */
+  .skill-row {
+    grid-template-columns: 1fr 72px 32px;
+    gap: 10px;
+    font-size: 11.5px;
+  }
+  .json-line { font-size: 11.5px; }
+
+  /* Experience */
+  .role-card { padding: 14px 16px; margin: 14px 0; }
+  .role-card h3 { font-size: 15px; }
+  .role-card ul { font-size: 12px; }
+  .ts-block .indent { padding-left: 14px; }
+
+  /* Contact */
+  .contact-block { padding: 14px 16px; }
+  .css-prop { gap: 4px; font-size: 12.5px; }
+  .css-prop .prop-k { min-width: 96px; }
+  .css-prop .prop-v { word-break: break-all; }
+
+  /* Decorative effects: tone down on small screens */
+  .neural-bg { opacity: 0.08; }
+  .scan-line { display: none; }
+}
+
+/* ============================================================
+   SMALL phones ≤ 420px
+   ============================================================ */
+@media (max-width: 420px) {
+  .titlebar-center { font-size: 10.5px; padding: 2px 8px; }
+  .titlebar-center .branch-mark { display: inline; }
+  .titlebar { padding: 0 6px; }
+
+  .menubar .menu-item { padding: 4px 7px; font-size: 11px; }
+
+  .page { padding: 20px 14px 40px; }
+  .page h1 { font-size: 28px; }
+  .hero-greet { font-size: 11.5px; }
+  .hero-name { font-size: clamp(30px, 10vw, 44px) !important; }
+  .hero-sub { font-size: 13px; }
+
+  .nb-card h3 { font-size: 14px; }
+  .skill-row { grid-template-columns: 1fr 60px 28px; gap: 8px; font-size: 11px; }
+  .css-prop .prop-k { min-width: 80px; }
+
+  .activity .ab-btn { max-width: 48px; }
+}
+
+/* ============================================================
+   LANDSCAPE phones — keep terminal sheet shorter
+   ============================================================ */
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  .terminal { height: 200px; max-height: 60vh; }
+  .copilot { top: 56px; bottom: 70px; }
+  .sidebar { top: 56px; bottom: 70px; }
+}
